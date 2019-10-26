@@ -26,3 +26,16 @@ jobs:
     steps:
       - checkout
       - run: Write-Host 'Hello, Windows'
+
+- run:
+          name: Code Has Arrived
+          command: |
+            ls -al
+            echo '^^^That should look familiar^^^'
+
+- run:
+          name: Code 
+          command: |
+            ls -al
+            echo '^^^hmm.., running code...^^^'
+
