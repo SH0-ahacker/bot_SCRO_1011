@@ -1,2 +1,2 @@
-# a-chat-of-your-PC-and-you
+# bot_SRO_1011
 Woah!, this is very cool!
