@@ -1,0 +1,42 @@
+<script src="//cdnjs.cloudflare.com/ajax/libs/annyang/2.4.0/annyang.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/SpeechKITT/1.0.0/speechkitt.min.js"></script>
+<script>
+if (annyang) {
+  annyang.addCommands({
+    'like': function() { alert('Yes!!') }
+        
+  });
+  annyang.addCommands({
+    'dog': function() { alert('no, cat!!') }
+        
+  });
+  annyang.addCommands({
+    'Hey': function() { alert('Hello!, for a help..., says: Help') }
+        
+  });
+  annyang.addCommands({
+    'help': function() { alert('commands: dog, like, help, time') }
+        
+  });
+  annyang.addCommands({
+    'time': function() { alert(new Date()) }
+        
+  });
+  
+  // Tell KITT to use annyang
+  SpeechKITT.annyang();
+
+  // Define a stylesheet for KITT to use
+  SpeechKITT.setStylesheet('//cdnjs.cloudflare.com/ajax/libs/SpeechKITT/1.0.0/themes/flat.css');
+
+  // Render KITT's interface
+  SpeechKITT.vroom();
+}
+
+var recognition = new webkitSpeechRecognition();
+recognition.addEventListener('result', function(ev) {
+  SpeechKITT.setRecognizedSentence(
+    ev.results[ev.resultIndex][1].transcript // This is where the browser hides the text the user said
+  );
+});
+</script>
