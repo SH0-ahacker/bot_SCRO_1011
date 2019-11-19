@@ -1,0 +1,41 @@
+version: 2.1
+orbs:
+    hello: circleci/hello-build@0.0.5
+workflows:
+    "Hello Workflow":
+        jobs:
+          - hello/hello-build
+          commands:
+  sayhello:
+    description: "A very simple command for demonstration purposes"
+    parameters:
+      to:
+        type: string
+        default: "Hello World"
+    steps:
+      - run: echo << parameters.to >>
+      version: 2.1
+executors:
+  my-executor:
+    docker:
+      - image: circleci/ruby:2.5.1-node-browsers
+
+jobs:
+  my-job:
+    executor: my-executor
+    steps:
+      - run: echo outside the executor
+      jobs:
+  build:
+    docker:
+      - image: buildpack-deps:trusty
+    environment:
+      FOO: bar
+    parallelism: 3
+    resource_class: large
+    working_directory: ~/my-app
+    steps:
+      - run: go test -v $(go list ./... | circleci tests split)
+
+      
+      
