@@ -1,0 +1,89 @@
+name: Node CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [8.x, 10.x, 12.x]
+
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: npm install, build, and test
+      run: |
+        npm ci
+        npm run build --if-present
+        npm test
+      env:
+        CI: true
+        
+       - name: go
+  uses: actions/setup-go@v1.0.0
+  with:
+    # The Go version to download (if necessary) and use. Example: 1.9.3
+    version: # optional, default is 1.10:  
+       on:
+  push:
+    branches:
+    - master
+    - release/*
+      on:
+  pull_request:
+    branches:
+    - master
+      jobs:
+  my_job:
+    name: deploy to staging
+    runs-on: ubuntu-18.04
+    - name: Setup Node
+  uses: actions/setup-node@v1
+  with:
+    node-version: '10.x'
+    - name: Install Dependencies
+  run: npm install
+  job_id:
+     jobs:
+  test:
+    name: Test on node ${{ matrix.node_version }} and ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node_version: ['8', '10', '12']
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node.js ${{ matrix.node_version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node_version }}
+
+    - name: npm install, build and test
+      run: |
+        npm install
+        npm run build --if-present
+        npm test
+- name: GitHub Action for Firebase
+  uses: w9jds/firebase-action@v1.1.0
+  - name: Setup Java Action
+  uses: actions/setup-java@v1.0.0
+  with:
+    # The JDK version to make available on the path. Takes a whole or semver Jdk version, or 1.x syntax (e.g. 1.8 => Jdk 8.x)
+    version: 
+    # The architecture (x86, x64) of the JDK.
+    architecture: # default is x64
+    # Path to where the compressed JDK is located. The path could be in your source repository or a local path on the agent.
+    jdkFile: # optional
+    - name: Create an issue
+  uses: JasonEtco/create-an-issue@v1.2.0
+  - name: GraphQL query
+  uses: helaili/github-graphql-action@1.0
