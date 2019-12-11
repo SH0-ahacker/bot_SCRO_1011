@@ -1,0 +1,1004 @@
+<script>
+// JSfiddle files
+fetch("/echo/html/", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/x-www-form-urlencoded; charset=utf-8"
+  },
+  body: "html=<a href='#'>hello world</a>"
+})
+.then((response) => response.text())
+.then((responseText) => {
+  document.querySelector("#result").innerHTML = responseText
+})
+.catch((error) => {
+  console.error(error)
+})
+</script>
+<script src="/V 5.0.2/form.js"></script>
+<script>
+if (!annyang) {
+  console.log("Speech Recognition is not supported");
+}
+annyang.addCallback('result', function(phrases) {
+  console.log("I think the user said: ", phrases[0]);
+  console.log("But then again, it could be any of the following: ", phrases);
+});
+annyang.addCallback('resultMatch', function(userSaid, commandText, phrases) {
+  console.log(userSaid); // sample output: 'hello'
+  console.log(commandText); // sample output: 'hello (there)'
+  console.log(phrases); // sample output: ['hello', 'halo', 'yellow', 'polo', 'hello kitty']
+});
+annyang.addCallback('resultNoMatch', function(phrases) {
+  console.log("I think the user said: ", phrases[0]);
+  console.log("But then again, it could be any of the following: ", phrases);
+});
+annyang.addCallback('soundstart', function() {
+  console.log('sound detected');
+});
+annyang.addCallback('result', function() {
+  console.log('sound stopped');
+});
+var commands = {'hello :name': helloFunction};
+var commands2 = {'hi': helloFunction};
+// initialize annyang, overwriting any previously added commands
+annyang.init(commands, true);
+// adds an additional command without removing the previous commands
+annyang.init(commands2, false);
+// Start listening, don't restart automatically
+annyang.start({ autoRestart: false });
+// Start listening, don't restart automatically, stop recognition after first phrase recognized
+annyang.start({ autoRestart: false, continuous: false });
+var commands = {'hello :name': helloFunction, 'howdy': helloFunction};
+var commands2 = {'hi': helloFunction};
+annyang.addCommands(commands);
+annyang.addCommands(commands2);
+// annyang will now listen to all three commands
+annyang.addCallback('error', function() {
+  $('.myErrorText').text('There was an error!');
+});
+annyang.addCallback('errorNetwork', notConnected, this);
+annyang.trigger('Time for some thrilling heroics');
+annyang.trigger(
+    ['Time for some thrilling heroics', 'Time for some thrilling aerobics']
+  );
+</script>
+<script>
+var commands = {
+  // annyang will capture anything after a splat (*) and pass it to the function.
+  // e.g. saying "Show me Batman and Robin" will call showFlickr('Batman and Robin');
+  'show me *tag': showFlickr,
+  // A named variable is a one-word variable, that can fit anywhere in your command.
+  // e.g. saying "calculate October stats" will call calculateStats('October');
+  'calculate :month stats': calculateStats,
+  // By defining a part of the following command as optional, annyang will respond
+  // to both: "say hello to my little friend" as well as "say hello friend"
+  'say hello (to my little) friend': greeting
+};
+var showFlickr = function(tag) {
+  var url = 'http://api.flickr.com/services/rest/?tags='+tag;
+  $.getJSON(url);
+}
+var calculateStats = function(month) {
+  $('#stats').text('Statistics for '+month);
+}
+var greeting = function() {
+  $('#greeting').text('Hello!');
+}
+</script>
+
+<script>
+module.exports = function(context) {
+    var ConfigParser, XmlHelpers;
+    try {
+        // cordova-lib >= 5.3.4 doesn't contain ConfigParser and xml-helpers anymore
+        ConfigParser = context.requireCordovaModule("cordova-common").ConfigParser;
+        XmlHelpers = context.requireCordovaModule("cordova-common").xmlHelpers;
+    } catch (e) {
+        ConfigParser = context.requireCordovaModule("cordova-lib/src/configparser/ConfigParser");
+        XmlHelpers = context.requireCordovaModule("cordova-lib/src/util/xml-helpers");
+    }
+    /** @external */
+    var fs = context.requireCordovaModule('fs'),
+        path = context.requireCordovaModule('path'),
+        et = context.requireCordovaModule('elementtree');
+    /** @defaults */
+    var xwalkVariables = {},
+        argumentsString = context.cmdLine,
+        pluginConfigurationFile = path.join(context.opts.plugin.dir, 'plugin.xml'),
+        androidPlatformDir = path.join(context.opts.projectRoot,
+            'platforms', 'android'),
+        projectConfigurationFile = path.join(context.opts.projectRoot,
+            'config.xml'),
+        platformConfigurationFile,
+        projectManifestFile = path.join(androidPlatformDir,
+            'AndroidManifest.xml'),
+        xwalk64bit = "xwalk64bit",
+        xwalkLiteVersion = "",
+        specificVersion = false;
+    var oldConfigXMLLocation = path.join(androidPlatformDir, 'res', 'xml', 'config.xml');
+    var newConfigXMLLocation = path.join(androidPlatformDir, 'app', 'src', 'main', 'res', 'xml', 'config.xml');
+    if (fs.existsSync(newConfigXMLLocation)) {
+        // cordova-android >= 7.0.0
+        platformConfigurationFile = newConfigXMLLocation;
+    } else {
+        // cordova-android < 7.0.0
+        platformConfigurationFile = oldConfigXMLLocation;
+    }
+    /** Init */
+    var CordovaConfig = new ConfigParser(platformConfigurationFile);
+    var addPermission = function() {
+        var projectManifestXmlRoot = XmlHelpers.parseElementtreeSync(projectManifestFile);
+        var child = et.XML('<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />');
+        XmlHelpers.graftXML(projectManifestXmlRoot, [child], '/manifest');
+        fs.writeFileSync(projectManifestFile, projectManifestXmlRoot.write({indent: 4}), 'utf-8');
+    }
+    var removePermission = function() {
+        var projectManifestXmlRoot = XmlHelpers.parseElementtreeSync(projectManifestFile);
+        var child = et.XML('<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />');
+        XmlHelpers.pruneXML(projectManifestXmlRoot, [child], '/manifest');
+        fs.writeFileSync(projectManifestFile, projectManifestXmlRoot.write({indent: 4}), 'utf-8');
+    }
+    var defaultPreferences = function() {
+        var pluginPreferences = {};
+        var pluginXmlRoot = XmlHelpers.parseElementtreeSync(pluginConfigurationFile),
+            tagName = "preference",
+            containerName = "config-file",
+            targetPlatform = 'android',
+            targetPlatformTag = pluginXmlRoot.find('./platform[@name="' + targetPlatform + '"]');
+        var tagsInRoot = pluginXmlRoot.findall(tagName) || [],
+            tagsInPlatform = targetPlatformTag ? targetPlatformTag.findall(tagName) : [],
+            tagsInContainer = targetPlatformTag ? targetPlatformTag.findall(containerName) : [],
+            tagsList = tagsInRoot.concat(tagsInContainer);
+        // Parses <preference> tags within <config-file>-blocks
+        tagsList.map(function(prefTag) {
+            prefTag.getchildren().forEach(function(element) {
+                if ((element.tag == 'preference') && (element.attrib['name']) && element.attrib['default']) {
+                    // Don't add xwalkLiteVersion in the app/config.xml
+                    if (element.attrib['name'] == "xwalkLiteVersion") {
+                        xwalkLiteVersion = element.attrib['default'];
+                    } else {
+                        pluginPreferences[element.attrib['name']] = element.attrib['default'];
+                    }
+                }
+            });
+        });
+        return pluginPreferences;
+    }
+    /** The style of name align with config.xml */
+    var setConfigPreference = function(name, value) {
+        var trimName = name.replace('_', '');
+        for (var localName in xwalkVariables) {
+            if (localName.toUpperCase() == trimName.toUpperCase()) {
+                xwalkVariables[localName] = value;
+                if (localName == 'xwalkVersion') {
+                    specificVersion = true;
+                }
+            }
+        }
+    }
+    /** Pase the cli command to get the specific preference*/
+    var parseCliPreference = function() {
+        var commandlineVariablesList = argumentsString.split('--variable');
+        if (commandlineVariablesList) {
+            commandlineVariablesList.forEach(function(element) {
+                element = element.trim();
+                if(element && element.indexOf('XWALK') == 0) {
+                    var preference = element.split('=');
+                    if (preference && preference.length == 2) {
+                        setConfigPreference(preference[0], preference[1]);
+                    }
+                }
+            });
+        }
+    }
+    /** Add preference */
+    this.addPreferences = function() {
+        // Pick the xwalk variables with the cli preferences
+        // parseCliPreference();
+        // Add the permission of writing external storage when using shared mode
+        if (CordovaConfig.getGlobalPreference('xwalkMode') == 'shared') {
+            addPermission();
+        }
+        // Configure the final value in the config.xml
+        // var configXmlRoot = XmlHelpers.parseElementtreeSync(projectConfigurationFile);
+        // var preferenceUpdated = false;
+        // for (var name in xwalkVariables) {
+        //     var child = configXmlRoot.find('./preference[@name="' + name + '"]');
+        //     if(!child) {
+        //         preferenceUpdated = true;
+        //         child = et.XML('<preference name="' + name + '" value="' + xwalkVariables[name] + '" />');
+        //         XmlHelpers.graftXML(configXmlRoot, [child], '/*');
+        //     }
+        // }
+        // if(preferenceUpdated) {
+        //     fs.writeFileSync(projectConfigurationFile, configXmlRoot.write({indent: 4}), 'utf-8');
+        // }
+    }
+    /** Remove preference*/
+    this.removePreferences = function() {
+        if (CordovaConfig.getGlobalPreference('xwalkMode') == 'shared') {
+            // Add the permission of write_external_storage in shared mode
+            removePermission();
+        }
+        // var configXmlRoot = XmlHelpers.parseElementtreeSync(projectConfigurationFile);
+        // for (var name in xwalkVariables) {
+        //     var child = configXmlRoot.find('./preference[@name="' + name + '"]');
+        //     if (child) {
+        //         XmlHelpers.pruneXML(configXmlRoot, [child], '/*');
+        //     }
+        // }
+        // fs.writeFileSync(projectConfigurationFile, configXmlRoot.write({indent: 4}), 'utf-8');
+    }
+    var build64bit = function() {
+        var build64bit = false;
+        var commandlineVariablesList = argumentsString.split('--');
+        if (commandlineVariablesList) {
+            commandlineVariablesList.forEach(function(element) {
+                element = element.trim();
+                if(element && element.indexOf(xwalk64bit) == 0) {
+                    build64bit = true;
+                }
+            });
+        }
+        return build64bit;
+    }
+    this.beforeBuild64bit = function() {
+        if(build64bit()) {
+            var configXmlRoot = XmlHelpers.parseElementtreeSync(projectConfigurationFile);
+            var child = configXmlRoot.find('./preference[@name="' + xwalk64bit + '"]');
+            if(!child) {
+                child = et.XML('<preference name="' + xwalk64bit + '" value="' + xwalk64bit + '" />');
+                XmlHelpers.graftXML(configXmlRoot, [child], '/*');
+                fs.writeFileSync(projectConfigurationFile, configXmlRoot.write({indent: 4}), 'utf-8');
+            }
+        }
+    }
+    this.afterBuild64bit = function() {
+        if(build64bit()) {
+            var configXmlRoot = XmlHelpers.parseElementtreeSync(projectConfigurationFile);
+            var child = configXmlRoot.find('./preference[@name="' + xwalk64bit + '"]');
+            if (child) {
+                XmlHelpers.pruneXML(configXmlRoot, [child], '/*');
+                fs.writeFileSync(projectConfigurationFile, configXmlRoot.write({indent: 4}), 'utf-8');
+            }
+        }
+        console.log("Crosswalk info:");
+        console.log("        After much discussion and analysis of the market,");
+        console.log("        we have decided to discontinue support for Android 4.0 (ICS) in Crosswalk starting with version 20,");
+        console.log("        so the minSdkVersion of Cordova project is configured to 16 by default. \n");
+    }
+    xwalkVariables = defaultPreferences();
+};
+module.exports = function(context) {
+    /** @external */
+    var deferral = context.requireCordovaModule('q').defer(),
+        UpdateConfig = require('./../update_config.js'),
+        updateConfig = new UpdateConfig(context);
+    /** Main method */
+    var main = function() {
+        // Remove the xwalk variables
+        updateConfig.removePreferences();
+        deferral.resolve();
+    };
+    main();
+    return deferral.promise;
+};
+module.exports = function(context) {
+    /** @external */
+    var deferral = context.requireCordovaModule('q').defer(),
+        UpdateConfig = require('./../update_config.js'),
+        updateConfig = new UpdateConfig(context);
+    /** Main method */
+    var main = function() {
+        // Remove the xwalk variables
+        updateConfig.beforeBuild64bit();
+        deferral.resolve();
+    };
+    main();
+    return deferral.promise;
+};
+module.exports = function(context) {
+    /** @external */
+    var deferral = context.requireCordovaModule('q').defer(),
+        UpdateConfig = require('./../update_config.js'),
+        updateConfig = new UpdateConfig(context);
+    /** Main method */
+    var main = function() {
+        // Add xwalk preference to config.xml
+        updateConfig.addPreferences();
+        deferral.resolve();
+    };
+    main();
+    return deferral.promise;
+};
+module.exports = function(context) {
+    /** @external */
+    var deferral = context.requireCordovaModule('q').defer(),
+        UpdateConfig = require('./../update_config.js'),
+        updateConfig = new UpdateConfig(context);
+    /** Main method */
+    var main = function() {
+        // Remove the xwalk variables
+        updateConfig.afterBuild64bit();
+        deferral.resolve();
+    };
+    main();
+    return deferral.promise;
+};
+</script>
+<script>
+    hljs.initHighlightingOnLoad();
+  </script>
+  <script>
+  if (annyang) {
+  var commands = {
+    'show tps report': function() {
+      $('#tpsreport').animate({bottom: '-100px'});
+    }
+    
+    var commands = {
+    'hello' function() {
+      $('#hello').animate({bottom: '-100px'});
+    }
+  };
+  </script>
+  <script>
+    var _gaq = _gaq || [];
+    _gaq.push(['_setAccount', 'UA-24775009-1']);
+    _gaq.push(['_trackPageview']);
+    (function() {
+      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+    })();
+  </script>
+  
+  
+<video autoplay=""></video>
+<script>
+function useCamera () {
+const constraints = {
+  video: true
+};
+const video = document.querySelector('video');
+navigator.mediaDevices.getUserMedia(constraints).
+  then((stream) => {video.srcObject = stream});
+  
+  }
+  
+</script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"></script>
+<script>
+library("shiny")
+ui = fluidPage(
+  singleton(
+    tags$head(
+      tags$script(src = "//cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"),
+      includeScript("voice.js")
+    )
+  )
+)
+server = function(input, output, session) {}
+shinyApp(ui, server)
+</script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/SpeechKITT/1.0.0/speechkitt.min.js"></script>
+<img class="irc_mut" src="data:image/jpeg;base64,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" alt="Resultado de imagem para mountain" width="500" height="550" style="margin-top: 0px; margin-bottom: 0px;">
+<script>
+</script>
+<script>
+(function () {
+  /*global annyang,$ */
+  "use strict";
+  var root = this;
+  if (annyang) {
+    var chatToggle = function() {
+      root.Chat.toggleSidebar();
+    };
+    var chatOnline = function() {
+      root.ChatVisibility.goOnline();
+    };
+    var chatOffline = function() {
+      root.ChatVisibility.goOffline();
+    };
+    var searchMore = function(term) {
+      root.goURI('/search/more/?q='+term);
+    };
+    var gotoPage = function(term) {
+      root.goURI('/'+term.replace(/[^\w]/ig, ''));
+    };
+    var stream = function() {
+      root.goURI('/');
+    };
+    var appcenter = function() {
+      root.goURI('/appcenter');
+    };
+    var messages = function() {
+      root.goURI('/messages');
+    };
+    var friendRequests = function() {
+      root.goURI('/friends/requests');
+    };
+    var friends = function() {
+      root.goURI('/friends');
+    };
+    var profile = function() {
+      root.goURI('/me');
+    };
+    var events = function() {
+      root.goURI('/events/list');
+    };
+    var calendar = function() {
+      root.goURI('/events/calendar');
+    };
+    var photos = function(name) {
+      root.goURI('/'+(name || 'me').replace(/[^\w]/ig, '')+'/photos');
+    };
+    var albums = function(name) {
+      root.goURI('/'+(name || 'me').replace(/[^\w]/ig, '')+'/photos_albums');
+    };
+    var goBack = function() {
+      history.back();
+    };
+    var pageScroll = function(direction) {
+      if (direction === 'up') {
+        window.scrollBy(0, -(window.innerHeight-$('pageHead').offsetHeight));
+      } else {
+        window.scrollBy(0, window.innerHeight-$('pageHead').offsetHeight);
+      }
+    };
+    annyang.addCommands({
+      'back':                 goBack,
+      'go back':              goBack,
+      'go home':              stream,
+      'home':                 stream,
+      'news':                 stream,
+      'profile':              profile,
+      'me':                   profile,
+      'games':                appcenter,
+      'apps':                 appcenter,
+      'messages':             messages,
+      'inbox':                messages,
+      'mail':                 messages,
+      'email':                messages,
+      'events':               events,
+      'calendar':             calendar,
+      'photos':               photos,
+      'photos *page':         photos,
+      'albums':               albums,
+      'albums *page':         albums,
+      'friend requests':      friendRequests,
+      'friends':              friends,
+      'chat':                 chatToggle,
+      'chat online':          chatOnline,
+      'go online':            chatOnline,
+      'chat offline':         chatOffline,
+      'go offline':           chatOffline,
+      'scroll':               pageScroll,
+      'scroll :direction':    pageScroll,
+      'find *term':           searchMore,
+      'search for *term':     searchMore,
+      'search *term':         searchMore,
+      'go to *page':          gotoPage,
+      'go *page':             gotoPage,
+    });
+    annyang.start();
+  }
+}).call(this);
+</script>
+<script>
+(function () {
+  /*global annyang,jQuery */
+  "use strict";
+  var root = this;
+  if (annyang) {
+    annyang.debug();
+    annyang.setLanguage('he');
+    var nextPage = function() {
+      root.location.href = jQuery('.next-page a').attr("href") || '/';
+    };
+    var prevPage = function() {
+      root.location.href = jQuery('.prev-page a').attr("href") || '/';
+    };
+    var gotoHome = function() {
+      root.location.href = '/';
+    };
+    var gotoGadgets = function() {
+      root.location.href = '/category/gadgets/';
+    };
+    var gotoStartup = function() {
+      root.location.href = '/category/startup/';
+    };
+    var gotoDevelopment = function() {
+      root.location.href = '/category/development/';
+    };
+    var gotoInternet = function() {
+      root.location.href = '/category/internet/';
+    };
+    var gotoHitech = function() {
+      root.location.href = '/category/hi-tech/';
+    };
+    var gotoGames = function() {
+      root.location.href = '/category/games1/';
+    };
+    var gotoScience = function() {
+      root.location.href = '/category/science/';
+    };
+    var gotoEvents = function() {
+      root.location.href = '/eventsboard/';
+    };
+    var gotoJobs = function() {
+      root.location.href = 'http://geekjob.co.il/';
+    };
+    var gotoSearch = function(search) {
+      root.location.href = '/?s='+search;
+    };
+    var scrollToTop = function() {
+      jQuery("html, body").animate({ scrollTop: 0 }, 1500);
+      return false;
+    };
+    annyang.addCommands({
+      '(דף) (ה)בית':             gotoHome,
+      '(דף) הבא':             nextPage,
+      '(דף) (ה)קודם':             prevPage,
+      'גאג׳טים*etc':               gotoGadgets,
+      'מובייל*etc':           gotoGadgets,
+      'mobile*etc':          gotoGadgets,
+      'סטארט אפ*etc':        gotoStartup,
+      ':etc סיכון':           gotoStartup,
+      'פיתוח*etc':        gotoDevelopment,
+      'אינטרנט*etc':        gotoInternet,
+      'היי טק*etc':        gotoHitech,
+      'משחקים*etc':        gotoGames,
+      'מדע*etc':        gotoScience,
+      'אירוע*etc':        gotoEvents,
+      'משרות*etc':        gotoJobs,
+      'דרושים*etc':        gotoJobs,
+      ':geek me up scotty':        scrollToTop,
+      'חפש *etc':        gotoSearch,
+      'חפס *etc':        gotoSearch,
+    });
+    annyang.start();
+  }
+}).call(this);
+</script>
+<script>
+if (annyang) {
+    // define the functions our commands will run.
+    var hello = function() {
+      $("#hello").slideDown("slow");
+      scrollTo("#section_hello");
+    };
+    var showFlickr = function(tag) {
+      $('#flickrGallery').show();
+      $('#flickrLoader p').text('Searching for '+tag).fadeIn('fast');
+      var url = '//api.flickr.com/services/rest/?method=flickr.photos.search&api_key=a828a6571bb4f0ff8890f7a386d61975&sort=interestingness-desc&per_page=9&format=json&callback=jsonFlickrApi&tags='+tag;
+      $.ajax({
+        type: 'GET',
+        url: url,
+        async: false,
+        jsonpCallback: 'jsonFlickrApi',
+        contentType: "application/json",
+        dataType: 'jsonp'
+      });
+      scrollTo("#section_image_search");
+    };
+    var jsonFlickrApi = function(results) {
+      $('#flickrLoader p').fadeOut('slow');
+      var photos = results.photos.photo;
+      $.each(photos, function(index, photo) {
+        $(document.createElement("img"))
+          .attr({ src: '//farm'+photo.farm+'.staticflickr.com/'+photo.server+'/'+photo.id+'_'+photo.secret+'_s.jpg' })
+          .addClass("flickrGallery")
+          .appendTo(flickrGallery);
+      });
+    };
+    var showTPS = function(type) {
+      $('#tpsreport').show().animate({
+        bottom: '-100px'
+      }).delay('2000').animate({
+        bottom: '-500px'
+      });
+    };
+    var getStarted = function() {
+      window.location.href = 'https://github.com/TalAter/annyang';
+    }
+    // define our commands.
+    // * The key is the phrase you want your users to say.
+    // * The value is the action to do.
+    //   You can pass a function, a function name (as a string), or write your function as part of the commands object.
+    var commands = {
+      'hello (there)':        hello,
+      'show me *search':      showFlickr,
+      'show :type report':    showTPS,
+      'let\'s get started':   getStarted,
+    };
+    // OPTIONAL: activate debug mode for detailed logging in the console
+    annyang.debug();
+    // Add voice commands to respond to
+    annyang.addCommands(commands);
+    // OPTIONAL: Set a language for speech recognition (defaults to English)
+    // For a full list of language codes, see the documentation:
+    // https://github.com/TalAter/annyang/blob/master/docs/FAQ.md#what-languages-are-supported
+    annyang.setLanguage('en');
+    // Start listening. You can call this here, or attach this call to an event, button, etc.
+    annyang.start();
+  } else {
+    $(document).ready(function() {
+      $('#unsupported').fadeIn('fast');
+    });
+  }
+  var scrollTo = function(identifier, speed) {
+    $('html, body').animate({
+        scrollTop: $(identifier).offset().top
+    }, speed || 1000);
+  }
+</script>
+<script>
+if (annyang) {
+  annyang.addCommands({
+    'like': function() { alert('Yes!!') }
+        
+  });
+  annyang.addCommands({
+    'dog': function() { alert('no, cat!!') }
+        
+  });
+  annyang.addCommands({
+    'Hey': function() { alert('Hello!, for a help..., says: Help ' ) }
+        
+  });
+  annyang.addCommands({
+    'help': function() { alert('commands: dog, like, help, time') }
+        
+  });
+  annyang.addCommands({
+    'time': function() { alert(new Date()) }
+        
+  });
+  
+  
+ 
+  annyang.addCommands({
+    'rainbow': function() { alert('is cool') }
+        
+  });
+  
+  annyang.addCommands({
+    'bee': function() { alert('bees?') }
+        
+  });
+  
+  annyang.addCommands({
+    'fart': function() { alert('what?!?!?!') }
+        
+  });
+  
+  annyang.addCommands({
+    'santa': function() { alert('🎅') }
+        
+  });
+  
+  
+ annyang.addCommands({
+    'claus': function() { alert('🎅') }
+        
+  });
+  
+  annyang.addCommands({
+    'tree': function() { alert('🌲🌲🌲') }
+        
+  });
+  
+  annyang.addCommands({
+    'trees': function() { alert('🌲🌲🌲') }
+        
+  });
+  
+  annyang.addCommands({
+    'palm': function() { alert('🌲🌲🌲') }
+        
+  });
+  
+  annyang.addCommands({
+    'leaf': function() { alert('🍁🍂🍃') }
+        
+  });
+  
+  annyang.addCommands({
+    'grapes': function() { alert('🍇') }
+        
+  });
+  
+  
+  annyang.addCommands({
+    'grape': function() { alert('🍇') }
+        
+  });
+  
+  annyang.addCommands({
+    'use camera': function() { useCamera() }
+        
+  });
+	
+annyang.addCommands({
+    'you like siri': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like google': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like apple': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like orange': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like me': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like you': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like windows': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like your mom': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like your darry': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like your grandma': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like your gradmaparents': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like youtube': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like loop': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like facebook': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like break': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like see': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like say anything': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like anything': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like everbody': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like your life': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like poop': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like shit': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like you like': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like nobodies': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like nobodie': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like lines': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like tomato': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like plant': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like love': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like airplane': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like paper': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like nighbot': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like nigh bot': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like bot': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like nigh': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like stars': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you like star': function() { alert("yes! " + name) }
+        
+  });
+	
+	annyang.addCommands({
+    'you head tube': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	
+	annyang.addCommands({
+    'you me ': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	
+	annyang.addCommands({
+    'head tube': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	
+	annyang.addCommands({
+    'warn': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	
+	annyang.addCommands({
+    'no': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	annyang.addCommands({
+    'no no': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	
+	annyang.addCommands({
+    'no no no': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	
+	annyang.addCommands({
+    'popcorn born baby': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	
+	annyang.addCommands({
+    'start': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+	
+	annyang.addCommands({
+    'end': function() { alert("yes????? " + name + age + "|||uiuiu" + age + name + "gggg n̶̨̡̠̫̲̬͕̔o̶̢̟͕͂͋̾́̋̋̑͛̐̒̀̇̀͘͝!̷̢̡̨̛͖̯̭͉̲̦̥̹̣̖̟̲̹̯̲̯̇̋͂̉̀͘ͅ") }
+        
+  });
+  // Tell KITT to use annyang
+  SpeechKITT.annyang();
+  // Define a stylesheet for KITT to use
+  SpeechKITT.setStylesheet('//cdnjs.cloudflare.com/ajax/libs/SpeechKITT/1.0.0/themes/flat.css');
+  // Render KITT's interface
+  SpeechKITT.vroom();
+  SpeechKITT.setStartCommand(annyang.start);
+  SpeechKITT.setStylesheet('https://cdnjs.cloudflare.com/ajax/libs/SpeechKITT/1.0.0/themes/flat.css');
+SpeechKITT.setInstructionsText('Some commands to try…');
+SpeechKITT.setSampleCommands(['say Hello, Ok google etc..']);
+SpeechKITT.displayRecognizedSentence(true);
+SpeechKITT.setAbortCommand(function() {
+  console.info('Stopping ............................');
+  annyang.abort();
+});
+SpeechKITT.setStartCommand(function() {
+  console.info('Speech Recognition Started ______________________________');
+  annyang.start();
+});
+}
+var recognition = new webkitSpeechRecognition();
+recognition.addEventListener('result', function(ev) {
+  SpeechKITT.setRecognizedSentence(
+    ev.results[ev.resultIndex][true].transcript // This is where the browser hides the text the user said
+  );
+});
+</script>
+<script>
+window.SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    let finalTranscript = '';
+    let recognition = new window.SpeechRecognition();
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 10;
+    recognition.continuous = true;
+    recognition.onresult = (event) => {
+      let interimTranscript = '';
+      for (let i = event.resultIndex, len = event.results.length; i < len; i++) {
+        let transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+      document.querySelector('body').innerHTML = finalTranscript + '<i style="color:#ddd;">' + interimTranscript + '</>';
+    }
+    recognition.start();
+</script>
