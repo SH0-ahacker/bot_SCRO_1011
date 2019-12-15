@@ -3,3 +3,13 @@ echo ":github: Bearer GH_TOKEN" >> ~/.gem/credentials
 gem build bot_SCRO_1011.gemspec
 
 gem push --key github --host https://rubygems.pkg.github.com/SH0-ahacker bot_SCRO_1011-1.0.0.gem
+
+$ bundle gem hello_hogosu.js
+      create  hello_hogosu.js/Gemfile
+      create  hello_hogosu.js/Rakefile
+      create  hello_hogosu.js/.gitignore
+      create  hello_hogosu.js/hello_kelvinst.gemspec
+      create  hello_hogosu.js/lib/hello_kelvinst.rb
+      create  hello_hogosu.js/lib/hello_kelvinst/version.rb
+Initializating git repo in /Users/SH0-ahacker/hogosu.js
+
